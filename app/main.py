@@ -144,8 +144,10 @@ async def upload(token: str = Depends(check_token),
 
     form = aiohttp.FormData()
 
+    # Отправка принятых файлов в backend
     for k, v in {'doc_markup': doc_markup, 'ai_markup': ai_markup, 'scan': scan}.items():
-        form.add_field(k, v.file.read(),
+        f = await v.read()
+        form.add_field(k, f,
                        content_type=v.content_type,
                        filename=v.filename)
     async with aiohttp.ClientSession() as client:
@@ -161,7 +163,8 @@ async def upload(token: str = Depends(check_token),
 
     form = aiohttp.FormData()
 
-    form.add_field('archive_file', archive_file.file.read(),
+    # Отправка принятых файлов в backend
+    form.add_field('archive_file', await archive_file.read(),
                    content_type=archive_file.content_type,
                    filename=archive_file.filename)
     async with aiohttp.ClientSession() as client:
