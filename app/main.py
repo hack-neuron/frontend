@@ -137,12 +137,10 @@ async def upload(token: str = Depends(check_token),
                  doc_markup: UploadFile = File(...),
                  ai_markup: UploadFile = File(...),
                  scan: UploadFile = File(...)):
-    if doc_markup.content_type != 'image/png':
-        raise HTTPException(status_code=400, detail='File must be .png!')
-    if ai_markup.content_type != 'image/png':
-        raise HTTPException(status_code=400, detail='File must be .png!')
-    if scan.content_type != 'image/png':
-        raise HTTPException(status_code=400, detail='File must be .png!')
+    # Проверка MIME загружаемых данных
+    for upload_file in (doc_markup, ai_markup, scan):
+        if upload_file.content_type != 'image/png':
+            raise HTTPException(status_code=400, detail='File must be .png!')
 
     form = aiohttp.FormData()
 
