@@ -1,0 +1,18 @@
+version: "3"
+services:
+  frontend:
+    build: .
+    restart: always
+    volumes:
+      - ./app:/app:z
+    ports:
+      - "8080:80"
+    logging:
+      driver: "json-file"
+      options:
+          max-size: "2m"
+          max-file: "10"
+    environment:
+      - USE_SOCK_FILE=False
+      - BACKEND_API_URL=http://backend.api.exmaple
+      - METADATA_API_URL=http://meta.api.exmaple
