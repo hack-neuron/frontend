@@ -48,10 +48,12 @@ class Credentials(BaseModel):
 
 
 def create_token(name: str) -> str:
+    """Создание JWT"""
     return jwt.encode({'name': name, 'time': int(time.time())}, JWT_KEY, algorithm='RS256').decode()
 
 
 async def check_token(token: str):
+    """Проверка валидности токена."""
     try:
         payload = jwt.decode(token, JWT_KEY_PUB, algorithm='RS256')
     except jwt.exceptions.InvalidTokenError:  # type: ignore
@@ -70,6 +72,7 @@ async def check_token(token: str):
 
 
 async def check_credentials(credentials: Credentials):
+    """Проверка логина и пароля пользователя."""
     async with aiohttp.ClientSession() as session:
         params = {'name': credentials.name}
         async with session.get(METADATA_API_URL + '/get_application', params=params) as resp:
@@ -85,6 +88,7 @@ async def check_credentials(credentials: Credentials):
 
 @app.post('/create_application')
 async def create_application(application: Application):
+    """Создание приложения. Возвращает токен для осуществления запросов к API."""
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(application.password.encode(), salt)
     async with aiohttp.ClientSession() as session:
@@ -103,6 +107,7 @@ async def create_application(application: Application):
 
 @app.delete('/delete_application')
 async def delete_application(credentials: Credentials = Depends(check_credentials)):
+    """Удаление приложения."""
     async with aiohttp.ClientSession() as session:
         params = {'name': credentials.name}
         async with session.delete(METADATA_API_URL + '/delete_application', params=params) as resp:
@@ -114,6 +119,7 @@ async def delete_application(credentials: Credentials = Depends(check_credential
 
 @app.post('/revoke_token')
 async def revoke_token(credentials: Credentials = Depends(check_credentials)):
+    """Отзыв токена приложения."""
     async with aiohttp.ClientSession() as session:
         token = create_token(credentials.name)
         data = {
@@ -137,6 +143,15 @@ async def upload(token: str = Depends(check_token),
                  doc_markup: UploadFile = File(...),
                  ai_markup: UploadFile = File(...),
                  scan: UploadFile = File(...)):
+    """Загрузка файлов на сервер.
+    `token` -- токен доступа
+    `doc_markup` -- разметка эксперта
+    `ai_markup` -- разметка ИИ-сервиса
+    `scan` -- рентгенограмма
+
+    Отдаёт `id: str` задачи, поставленной в очередь на выполнение.
+    Статус задачи можно узнать с помощью метода `get_status`.
+    """
     # Проверка MIME загружаемых данных
     for upload_file in (doc_markup, ai_markup, scan):
         if upload_file.content_type != 'image/png':
@@ -158,6 +173,15 @@ async def upload(token: str = Depends(check_token),
 @app.post('/upload_many')
 async def upload(token: str = Depends(check_token),
                  archive_file: UploadFile = File(...)):
+    """Загрузка архива с файлами на сервер.
+    `token` -- токен доступа
+    `doc_markup` -- разметка эксперта
+    `ai_markup` -- разметка ИИ-сервиса
+    `scan` -- рентгенограмма
+
+    Отдаёт `id: str` задачи, поставленной в очередь на выполнение.
+    Статус задачи можно узнать с помощью метода `get_status`.
+    """
     if archive_file.content_type != 'application/zip':
         raise HTTPException(status_code=400, detail='File must be .zip!')
 
@@ -175,6 +199,7 @@ async def upload(token: str = Depends(check_token),
 @app.get('/get_status')
 async def get_status(id_: str,
                      token: str = Depends(check_token)):
+    """Получение статуса выполнения задачи оп её `id`."""
     params = {'id_': id_}
     async with aiohttp.ClientSession() as client:
         async with client.get(BACKEND_API_URL + '/get_status', params=params) as resp:
